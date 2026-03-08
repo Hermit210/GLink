@@ -142,50 +142,6 @@
                     wait...</p>
             </div>
 
-            <!-- SVG Family Tree Container -->
-            <div id="familyTreeContainer"
-                class="hidden relative w-full aspect-square max-h-[400px] mb-8 z-10 mx-auto group/tree">
-                <!-- Hover Instruction overlay -->
-                <div
-                    class="absolute top-4 right-4 bg-dark/80 backdrop-blur-md border border-dark-border px-3 py-1.5 rounded-full text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 opacity-50 group-hover/tree:opacity-100 transition-opacity z-20">
-                    <i data-lucide="mouse-pointer-click" class="w-3 h-3 text-gold"></i> Hover Leaves
-                </div>
-
-                <svg id="familyTreeCanvas" viewBox="0 0 500 500" class="w-full h-full drop-shadow-2xl overflow-visible">
-                    <!-- Tree Trunk Base -->
-                    <path class="stroke-dark-border fill-transparent drop-shadow-[0_0_15px_rgba(255,215,0,0.1)]"
-                        stroke-width="12" stroke-linecap="round" d="M250,500 L250,380"></path>
-
-                    <!-- Main Branches -->
-                    <path class="stroke-dark-border fill-transparent" stroke-width="8" stroke-linecap="round"
-                        d="M250,380 Q250,280 150,220"></path>
-                    <path class="stroke-dark-border fill-transparent" stroke-width="8" stroke-linecap="round"
-                        d="M250,380 Q250,250 350,200"></path>
-                    <path class="stroke-dark-border fill-transparent" stroke-width="6" stroke-linecap="round"
-                        d="M250,380 Q250,150 250,100"></path>
-
-                    <!-- Sub Branches Left -->
-                    <path class="stroke-dark-border fill-transparent" stroke-width="4" stroke-linecap="round"
-                        d="M190,290 Q150,210 80,180"></path>
-                    <path class="stroke-dark-border fill-transparent" stroke-width="3" stroke-linecap="round"
-                        d="M130,205 Q100,150 120,100"></path>
-
-                    <!-- Sub Branches Right -->
-                    <path class="stroke-dark-border fill-transparent" stroke-width="4" stroke-linecap="round"
-                        d="M310,270 Q380,220 420,150"></path>
-                    <path class="stroke-dark-border fill-transparent" stroke-width="3" stroke-linecap="round"
-                        d="M360,195 Q380,120 330,80"></path>
-
-                    <!-- Sub Branches Top -->
-                    <path class="stroke-dark-border fill-transparent" stroke-width="3" stroke-linecap="round"
-                        d="M250,220 Q200,160 180,90"></path>
-                    <path class="stroke-dark-border fill-transparent" stroke-width="3" stroke-linecap="round"
-                        d="M250,180 Q300,140 300,60"></path>
-
-                    <!-- Group container for populated leaves -->
-                    <g id="treeLeavesGroup"></g>
-                </svg>
-            </div>
 
             <div class="grid grid-cols-2 gap-4 mb-8 relative z-10">
                 <div class="bg-dark/50 border border-dark-border rounded-2xl p-4 text-center">
@@ -369,12 +325,6 @@
 
                 document.getElementById('goldReceived').textContent = `${parseFloat(b.total_gold || 0).toFixed(3)}g`;
                 document.getElementById('valueReceived').textContent = `₹${Math.round(b.total_inr || 0).toLocaleString()}`;
-
-                // Build the Family Tree if this registry has gifts historically
-                if (data.gifts && data.gifts.length > 0) {
-                    document.getElementById('familyTreeContainer').classList.remove('hidden');
-                    buildFamilyTree(data.gifts);
-                }
 
                 // Hide loader & show form
                 removeLoader();
@@ -580,118 +530,6 @@
 
         // Initialize the page logic
         loadBlessing()
-
-        // --- Family Tree Leaf Generation Logic ---
-        function buildFamilyTree(gifts) {
-            const leavesGroup = document.getElementById('treeLeavesGroup');
-            leavesGroup.innerHTML = ''; // Clear existing
-
-            // Define branch anchor zones (x, y coordinates where leaves look natural)
-            const branchZones = [
-                { x: 150, y: 220 }, { x: 80, y: 180 }, { x: 120, y: 100 },
-                { x: 350, y: 200 }, { x: 420, y: 150 }, { x: 330, y: 80 },
-                { x: 250, y: 100 }, { x: 180, y: 90 }, { x: 300, y: 60 },
-                { x: 190, y: 290 }, { x: 310, y: 270 }, { x: 250, y: 220 },
-                { x: 250, y: 180 }, { x: 130, y: 205 }, { x: 360, y: 195 }
-            ];
-
-            let genesysSeed = 0; // Predictable randomness for beautiful layouts
-            function random(min, max) {
-                const x = Math.sin(genesysSeed++) * 10000;
-                return min + (x - Math.floor(x)) * (max - min);
-            }
-
-            gifts.forEach((gift, index) => {
-                // Select a branch zone procedurally
-                const zone = branchZones[index % branchZones.length];
-
-                // Add some scatter to map multiple leaves around the same branch nicely
-                const scatterX = zone.x + random(-40, 40);
-                const scatterY = zone.y + random(-40, 40);
-
-                // Scale leaf based on gold weight (base scale 0.8, up to 1.8 for huge gifts)
-                const baseScale = 0.8;
-                const weightScale = Math.min((gift.gold_grams / 5), 1.0);
-                const finalScale = baseScale + weightScale;
-
-                const rotation = random(-60, 60);
-                const animationDelay = index * 100;
-
-                // Create SVG Group wrapper for the leaf to handle hover and scaling
-                const leafGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                leafGroup.setAttribute('class', 'group/leaf cursor-pointer');
-                leafGroup.style.opacity = '0';
-                leafGroup.style.transform = `translate(${scatterX}px, ${scatterY}px) scale(0)`;
-                leafGroup.style.transformOrigin = 'center map';
-
-                // Animate entry
-                setTimeout(() => {
-                    leafGroup.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                    leafGroup.style.opacity = '1';
-                    leafGroup.style.transform = `translate(${scatterX}px, ${scatterY}px) scale(${finalScale}) rotate(${rotation}deg)`;
-                }, animationDelay);
-
-                // Golden Leaf Path (classic pointed leaf shape)
-                const leafPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                leafPath.setAttribute('d', 'M0 0 C 10 -20, 30 -20, 40 0 C 30 20, 10 20, 0 0 Z');
-                leafPath.setAttribute('fill', 'url(#goldGradient)');
-                leafPath.setAttribute('class', 'drop-shadow-[0_0_8px_rgba(255,215,0,0.5)] group-hover/leaf:drop-shadow-[0_0_15px_rgba(255,215,0,0.9)] transition-all duration-300');
-
-                // Center the leaf shape on its coordinate pivot
-                leafPath.setAttribute('transform', 'translate(-20, 0)');
-
-                // Gradient Definition (added once)
-                if (!document.getElementById('goldGradient')) {
-                    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-                    defs.innerHTML = `
-                        <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#FFD700" />
-                            <stop offset="50%" stop-color="#FFED4E" />
-                            <stop offset="100%" stop-color="#FFA500" />
-                        </linearGradient>
-                    `;
-                    document.getElementById('familyTreeCanvas').prepend(defs);
-                }
-
-                // Tooltip Label (ForeignObject for HTML inside SVG)
-                const tooltipHover = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-                tooltipHover.setAttribute('x', '-100');
-                tooltipHover.setAttribute('y', '-75'); // Position above leaf
-                tooltipHover.setAttribute('width', '200');
-                tooltipHover.setAttribute('height', '80');
-                tooltipHover.setAttribute('class', 'opacity-0 group-hover/leaf:opacity-100 transition-opacity duration-300 pointer-events-none');
-
-                // Ensure text is upright regardless of leaf rotation
-                tooltipHover.setAttribute('transform', `rotate(${-rotation}) scale(${1 / finalScale})`);
-
-                tooltipHover.innerHTML = `
-                <div xmlns="http://www.w3.org/1999/xhtml" class="w-full flex justify-center">
-                    <div class="bg-dark/90 backdrop-blur-md border border-gold/50 rounded-xl px-3 py-2 text-center shadow-[0_0_20px_rgba(255,215,0,0.3)]">
-                        <div class="text-white font-extrabold text-sm truncate max-w-[150px]">${gift.email.split('@')[0]}</div>
-                        <div class="text-gold font-bold text-xs uppercase tracking-widest mt-0.5">${gift.gold_grams}g</div>
-                    </div>
-                </div>
-                `;
-
-                leafGroup.appendChild(leafPath);
-                leafGroup.appendChild(tooltipHover);
-
-                // Hover Effects via JS for more complex scaling since CSS transform overrides position 
-                leafGroup.addEventListener('mouseenter', () => {
-                    leafGroup.style.transform = `translate(${scatterX}px, ${scatterY}px) scale(${finalScale * 1.25}) rotate(${rotation}deg)`;
-                    leafGroup.style.zIndex = '50';
-                    leavesGroup.appendChild(leafGroup); // bring to front
-                });
-                leafGroup.addEventListener('mouseleave', () => {
-                    leafGroup.style.transform = `translate(${scatterX}px, ${scatterY}px) scale(${finalScale}) rotate(${rotation}deg)`;
-                    leafGroup.style.zIndex = '1';
-                });
-
-                leavesGroup.appendChild(leafGroup);
-            });
-
-            lucide.createIcons();
-        }
     </script>
 </body>
 
