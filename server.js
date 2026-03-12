@@ -1426,6 +1426,385 @@ async function buyGoldOnGRAIL(userId, usdcAmount) {
 }
 
 // Group Management APIs
+// SELL GOLD ON GRAIL
+async function sellGoldOnGRAIL(grailUserId, goldGrams) {
+  try {
+    const goldTroyOunces = parseFloat((goldGrams / 31.1035).toFixed(6))
+    const minimumUsdc = parseFloat((goldTroyOunces * 4800).toFixed(2))
+    
+    console.log('=== SELL GOLD ON GRAIL ===')
+    console.log('userId:', grailUserId)
+    console.log('goldTroyOunces:', goldTroyOunces)
+    console.log('minimumUsdc:', minimumUsdc)
+    
+    // Try multiple sell approaches
+    let response
+    let sellSuccess = false
+    
+    // First, let's discover what endpoints actually exist
+    console.log('=== DISCOVERING AVAILABLE ENDPOINTS ===')
+    const testEndpoints = [
+      '/api/trading/estimate-sell',
+      '/api/trading/sell',
+      '/api/trading/sell-user',
+      '/api/trading/sell-partner',
+      '/api/trading/sales/user',
+      '/api/trading/sales/partner',
+      '/api/trading/withdraw',
+      '/api/trading/withdrawal',
+      '/api/trading/withdrawals'
+    ]
+    
+    let workingEndpoint = null
+    
+    for (const endpoint of testEndpoints) {
+      try {
+        console.log(`Testing: ${endpoint}`)
+        const testResponse = await grail.post(endpoint, {
+          goldAmount: goldTroyOunces,
+          minimumUsdcAmount: minimumUsdc,
+          userId: grailUserId
+        })
+        console.log(`✅ WORKING ENDPOINT FOUND: ${endpoint}`)
+        console.log('Response:', JSON.stringify(testResponse.data))
+        workingEndpoint = endpoint
+        response = testResponse
+        sellSuccess = true
+        break
+      } catch (e) {
+        console.log(`❌ ${endpoint} - Status: ${e.response?.status || 'No response'}`)
+        
+        // Try with different parameters for withdrawal endpoints
+        if (endpoint.includes('withdraw')) {
+          try {
+            const withdrawResponse = await grail.post(endpoint, {
+              amount: minimumUsdc,
+              tokenType: 'usdc'
+            })
+            console.log(`✅ WITHDRAWAL ENDPOINT WORKS: ${endpoint}`)
+            console.log('Withdrawal Response:', JSON.stringify(withdrawResponse.data))
+            workingEndpoint = endpoint
+            response = withdrawResponse
+            sellSuccess = true
+            break
+          } catch (withdrawError) {
+            console.log(`❌ ${endpoint} (withdrawal format) - Status: ${withdrawError.response?.status || 'No response'}`)
+          }
+        }
+      }
+    }
+    
+    if (!workingEndpoint) {
+      console.log('=== NO REAL ENDPOINTS WORK - CHECKING IF WE HAVE RIGHT API ACCESS ===')
+      
+      // Check if our API key has the right permissions
+      try {
+        const healthCheck = await grail.get('/health')
+        console.log('✅ API Health Check:', JSON.stringify(healthCheck.data))
+        
+        const priceCheck = await grail.get('/api/trading/gold/price')
+        console.log('✅ Price Check:', JSON.stringify(priceCheck.data))
+        
+        console.log('❌ SELL ENDPOINTS NOT AVAILABLE - This might be:')
+        console.log('   1. Mainnet-only feature')
+        console.log('   2. Requires special API permissions')
+        console.log('   3. Different endpoint names')
+        console.log('   4. Not implemented yet')
+        
+        // Contact GRAIL support or check documentation for sell endpoints
+        throw new Error('GRAIL sell endpoints not available on current API plan/environment')
+        
+      } catch (apiError) {
+        console.log('❌ API ACCESS ISSUE:', apiError.message)
+        throw new Error('GRAIL API access problem')
+      }
+    }
+    
+    console.log('Sell response:', JSON.stringify(response.data))
+    
+    const sellData = response.data?.data
+    
+    // Handle mock response case
+    if (sellData?.transaction?.serializedTx === null) {
+      console.log('=== MOCK SELL - NO TRANSACTION NEEDED ===')
+      return {
+        success: true,
+        sellId: sellData.withdrawalId || 'mock_sell_' + Date.now(),
+        usdcAmount: minimumUsdc,
+        goldAmount: goldGrams,
+        transactionId: 'mock_' + Date.now(),
+        mock: true
+      }
+    }
+    
+    if (!sellData?.transaction?.serializedTx) {
+      throw new Error('No serializedTx in sell response')
+    }
+    
+    const txResult = await signAndSubmit(
+      sellData.transaction.serializedTx
+    )
+    
+    console.log('✅ Sell TX:', txResult.signature)
+    
+    return {
+      success: true,
+      sellId: sellData.withdrawalId || 'sell_' + Date.now(),
+      usdcAmount: minimumUsdc,
+      goldAmount: goldGrams,
+      transactionId: txResult.signature,
+      mock: false
+    }
+  } catch(e) {
+    console.log('Sell error:', e.message)
+    if (e.response) {
+      console.log('Sell error response:', 
+        JSON.stringify(e.response.data))
+    }
+    throw e
+  }
+}
+
+app.post('/api/sell-gold', async (req, res) => {
+  try {
+    const { email, gold_grams, usdc_wallet_address, recipient_name, recipient_email } = req.body
+    
+    console.log('Sell gold request:', { email, gold_grams, usdc_wallet_address, recipient_name, recipient_email })
+    
+    // Get user
+    const { data: users, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+    
+    if (userError || !users || users.length === 0) {
+      return res.status(400).json({ success: false, error: 'User not found' })
+    }
+    
+    const user = users[0]
+    const goldToSell = parseFloat(gold_grams)
+    
+    if ((user.gold_grams || 0) < goldToSell) {
+      return res.status(400).json({ success: false, error: 'Insufficient gold balance' })
+    }
+    
+    // Get live price
+    const priceRes = await grail.get('/api/trading/gold/price')
+    const pricePerOunce = parseFloat(
+      priceRes.data?.data?.price || 5109)
+    const inrPerGram = (pricePerOunce / 31.1035) * 84
+    
+    console.log('Selling gold for:', email, goldToSell + 'g')
+    console.log('Gold price INR/gram:', inrPerGram)
+    console.log('Expected INR:', (goldToSell * inrPerGram).toFixed(2))
+    console.log('Expected USDC:', (goldToSell / 31.1035 * pricePerOunce).toFixed(2))
+    
+    // Create fresh GRAIL user for sell operation
+    console.log('Creating fresh GRAIL user for sell operation...')
+    const grailUser = await createGrailUser(email, '0000000000')
+    const grailUserId = grailUser.userId
+    
+    // Sell on GRAIL
+    console.log('=== CALLING SELL GOLD ON GRAIL ===')
+    const sellResult = await sellGoldOnGRAIL(
+      grailUserId, goldToSell
+    )
+    console.log('✅ SELL GOLD RESULT:', JSON.stringify(sellResult))
+    
+    // Update user gold balance
+    console.log('=== UPDATING USER GOLD BALANCE ===')
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ 
+        gold_grams: ((user.gold_grams || 0) - goldToSell).toFixed(4),
+        grail_user_id: grailUserId
+      })
+      .eq('email', email)
+    
+    if (updateError) {
+      console.log('❌ USER UPDATE ERROR:', updateError.message)
+      throw new Error(updateError.message)
+    }
+    console.log('✅ USER BALANCE UPDATED')
+    
+    // Save transaction
+    console.log('=== SAVING TRANSACTION ===')
+    try {
+      const { error: insertError } = await supabase
+        .from('transactions')
+        .insert([{
+          user_email: email,
+          type: 'sell',
+          amount_inr: parseFloat((goldToSell * inrPerGram).toFixed(2)),
+          gold_grams: goldToSell,
+          grail_tx_id: sellResult.transactionId,
+          status: 'completed',
+          created_at: new Date().toISOString(),
+          // Note: recipient_email and recipient_name columns might not exist in the table
+          // usdc_wallet_address: usdc_wallet_address || null,
+          // recipient_name: recipient_name || null,
+          // recipient_email: recipient_email || null
+        }])
+      
+      if (insertError) {
+        console.log('❌ TRANSACTION INSERT ERROR:', insertError.message)
+        throw new Error(insertError.message)
+      }
+      
+      console.log('✅ TRANSACTION SAVED')
+    } catch (saveError) {
+      console.log('❌ TRANSACTION SAVE FAILED:', saveError.message)
+      throw saveError
+    }
+    
+    // Send email
+    console.log('=== SENDING EMAIL ===')
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL,
+        to: email,
+        subject: 'Gold Sold Successfully! 🎉',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #10b981;">✅ Gold Sold Successfully!</h2>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Gold Sold:</strong> <span style="color: #f59e0b;">${goldToSell}g</span></p>
+              <p><strong>Value (INR):</strong> <span style="color: #10b981;">₹${(goldToSell * inrPerGram).toFixed(2)}</span></p>
+              <p><strong>Value (USDC):</strong> <span style="color: #3b82f6;">${(goldToSell / 31.1035 * pricePerOunce).toFixed(2)} USDC</span></p>
+              <p><strong>Remaining Gold:</strong> <span style="color: #6b7280;">${((user.gold_grams || 0) - goldToSell).toFixed(4)}g</span></p>
+              ${usdc_wallet_address ? `<p><strong>USDC Wallet:</strong> <span style="color: #6b7280;">${usdc_wallet_address}</span></p>` : ''}
+              ${recipient_name ? `<p><strong>Recipient:</strong> <span style="color: #6b7280;">${recipient_name}</span></p>` : ''}
+              <p><strong>Transaction ID:</strong> <span style="color: #6b7280; font-family: monospace;">${sellResult.transactionId}</span></p>
+              <p><strong>Note:</strong> <span style="color: ${sellResult.mock ? '#f59e0b' : '#10b981'};">${sellResult.mock ? 'This was processed using mock transaction (GRAIL sell endpoints not available)' : 'This was processed using real GRAIL blockchain transaction!'}</span></p>
+              ${sellResult.mock ? '' : `<p><strong>GRAIL Withdrawal ID:</strong> <span style="color: #6b7280; font-family: monospace;">${sellResult.sellId}</span></p>`}
+            </div>
+            <div style="text-align: center; margin-top: 30px; color: #6b7280;">
+              <p>Thank you for using G-Link! 🚀</p>
+            </div>
+          </div>
+        `
+      })
+      console.log('✅ EMAIL SENT')
+    } catch (emailError) {
+      console.log('❌ EMAIL ERROR:', emailError.message)
+      // Don't fail the whole transaction if email fails
+    }
+    
+    console.log('=== SELL GOLD COMPLETED SUCCESSFULLY ===')
+    res.json({
+      success: true,
+      message: 'Gold sold successfully!',
+      goldSold: goldToSell,
+      inrAmount: (goldToSell * inrPerGram).toFixed(2),
+      usdcAmount: (goldToSell / 31.1035 * pricePerOunce).toFixed(2),
+      remainingGold: ((user.gold_grams || 0) - goldToSell).toFixed(4),
+      transactionId: sellResult.transactionId,
+      solscanUrl: sellResult.mock ? null : `https://solscan.io/tx/${sellResult.transactionId}?cluster=devnet`,
+      mock: sellResult.mock || false
+    })
+  } catch (e) {
+    console.log('Sell gold error:', e.message)
+    res.status(500).json({ success: false, error: e.message })
+  }
+})
+
+// Test endpoint for sell transactions
+app.post('/api/test-sell', async (req, res) => {
+  try {
+    console.log('=== TEST SELL TRANSACTION ===')
+    console.log('Supabase URL:', process.env.SUPABASE_URL)
+    console.log('Supabase Key present:', !!process.env.SUPABASE_KEY)
+    
+    // Test Supabase connection first
+    const { data: testData, error: testError } = await supabase
+      .from('users')
+      .select('email')
+      .limit(1)
+    
+    if (testError) {
+      console.log('❌ SUPABASE CONNECTION ERROR:', testError.message)
+      return res.status(500).json({ success: false, error: 'Supabase connection failed: ' + testError.message })
+    }
+    
+    console.log('✅ Supabase connection test passed')
+    
+    const { error: insertError } = await supabase
+      .from('transactions')
+      .insert([{
+        user_email: 'saloni564321@gmail.com',
+        type: 'sell',
+        amount_inr: 14.00,
+        gold_grams: 0.001,
+        grail_tx_id: 'test_sell_tx_' + Date.now(),
+        status: 'completed',
+        created_at: new Date().toISOString(),
+        // Note: recipient_email and recipient_name columns might not exist in the table
+        // usdc_wallet_address: 'test_wallet',
+        // recipient_name: 'Test Recipient',
+        // recipient_email: 'test@example.com'
+      }])
+    
+    if (insertError) {
+      console.log('❌ TEST SELL INSERT ERROR:', insertError.message)
+      return res.status(500).json({ success: false, error: insertError.message })
+    }
+    
+    console.log('✅ TEST SELL TRANSACTION SAVED')
+    res.json({ success: true, message: 'Test sell transaction created' })
+  } catch (e) {
+    console.log('Test sell error:', e.message)
+    res.status(500).json({ success: false, error: e.message })
+  }
+})
+
+// Get transaction history
+app.get('/api/transactions/history', async (req, res) => {
+  try {
+    const { email } = req.query
+    
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' })
+    }
+    
+    console.log('=== FETCHING TRANSACTION HISTORY ===')
+    console.log('Email from query:', email)
+    console.log('Request URL:', req.originalUrl)
+    console.log('User-Agent:', req.get('User-Agent'))
+    
+    // Fetch all transactions for the user
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_email', email)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.log('❌ TRANSACTION HISTORY ERROR:', error.message)
+      throw new Error(error.message)
+    }
+    
+    console.log('✅ FOUND TRANSACTIONS:', transactions?.length || 0)
+    console.log('Transaction types:', transactions?.map(t => t.type) || [])
+    console.log('Sell transactions count:', transactions?.filter(t => t.type === 'sell').length || 0)
+    console.log('Recent transactions with timestamps:', transactions?.slice(0, 3).map(t => ({
+        type: t.type,
+        gold: t.gold_grams,
+        created_at: t.created_at,
+        date_obj: new Date(t.created_at)
+    })) || [])
+    console.log('Sample transaction:', transactions?.[0] || 'No transactions')
+    
+    res.json({
+      success: true,
+      transactions: transactions || []
+    })
+  } catch (e) {
+    console.log('Transaction history error:', e.message)
+    res.status(500).json({ success: false, error: e.message })
+  }
+})
+
+// Group Management APIs
 app.post('/api/groups/create', async (req, res) => {
   try {
     const { name, type, description, rules, creatorEmail } = req.body
@@ -1858,6 +2237,35 @@ app.post('/api/withdraw', async (req, res) => {
     }).catch(e => console.log('Email error:', e.message))
     
     console.log('Withdrawal saved successfully')
+    console.log('=== CREATING TRANSACTION RECORD FOR WITHDRAWAL ===')
+    console.log('Email:', email)
+    console.log('Amount INR:', parseFloat(amount_inr))
+    console.log('Gold grams:', goldNeeded)
+    console.log('Bank account:', bank_account || '')
+    console.log('IFSC:', ifsc || '')
+    console.log('Account name:', account_name || '')
+    
+    // Create transaction record for withdrawal
+    const { data: transactionInsert, error: transactionError } = await supabase
+      .from('transactions')
+      .insert([{
+        user_email: email,
+        type: 'withdrawal',
+        amount_inr: parseFloat(amount_inr),
+        gold_grams: goldNeeded,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      }])
+    
+    console.log('Transaction inserted for withdrawal:', transactionInsert)
+    console.log('Transaction insert error:', transactionError)
+    
+    if (transactionError) {
+      console.log('❌ FAILED TO CREATE TRANSACTION RECORD')
+      console.log('Error details:', JSON.stringify(transactionError, null, 2))
+    } else {
+      console.log('✅ TRANSACTION RECORD CREATED SUCCESSFULLY')
+    }
     
     res.json({ 
       success: true, 
@@ -1870,6 +2278,44 @@ app.post('/api/withdraw', async (req, res) => {
     
   } catch(e) {
     console.log('Withdraw error:', e.message)
+    res.status(500).json({ 
+      success: false, error: e.message 
+    })
+  }
+})
+
+// Test withdrawal endpoint
+app.get('/api/test-withdrawal', async (req, res) => {
+  try {
+    console.log('=== TEST WITHDRAWAL ENDPOINT CALLED ===')
+    
+    const email = 'shivamkk461@gmail.com'
+    const amount_inr = 100
+    const goldNeeded = 0.01
+    
+    // Create a test withdrawal transaction
+    const { data: transactionInsert, error: transactionError } = await supabase
+      .from('transactions')
+      .insert([{
+        user_email: email,
+        type: 'withdrawal',
+        amount_inr: amount_inr,
+        gold_grams: goldNeeded,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      }])
+    
+    console.log('Test withdrawal transaction created:', transactionInsert)
+    console.log('Test withdrawal transaction error:', transactionError)
+    
+    res.json({ 
+      success: true, 
+      message: 'Test withdrawal created!',
+      transactionId: transactionInsert?.[0]?.id
+    })
+    
+  } catch(e) {
+    console.log('Test withdraw error:', e.message)
     res.status(500).json({ 
       success: false, error: e.message 
     })

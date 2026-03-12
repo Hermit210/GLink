@@ -93,8 +93,109 @@
   <!-- Test Mode Banner -->
   <div id="testModeBanner"
     class="hidden bg-gradient-to-r from-gold to-gold-dark text-black text-[10px] font-extrabold tracking-widest uppercase text-center py-2 w-full fixed top-0 z-[101] shadow-[0_4px_15px_rgba(255,215,0,0.4)]">
-    🧪 TEST MODE ACTIVE - Payments are simulated </div>
+    TEST MODE ACTIVE - Payments are simulated 
+  </div>
 
+  <!-- Sell Gold Modal -->
+  <div id="sellModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden z-[100] flex items-center justify-center p-4 transition-opacity">
+    <div class="bg-dark-card border border-dark-border rounded-3xl w-full max-w-lg shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden relative">
+      <div class="px-8 py-6 border-b border-dark-border flex justify-between items-center bg-dark">
+        <h3 class="text-xl font-extrabold text-red-400 tracking-tighter">Sell Gold</h3>
+        <button onclick="closeSellModal()" class="w-8 h-8 rounded-full bg-dark border border-dark-border text-gray-400 flex items-center justify-center hover:bg-white hover:text-black transition-colors shrink-0">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-8">
+        <form id="sellForm" class="space-y-4">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Gold to Sell (grams)</label>
+            <div class="relative">
+              <i data-lucide="trending-down" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+              <input type="number" id="sellGrams" step="0.0001" min="0.0001" required class="w-full pl-10 pr-4 py-3 text-sm bg-dark border border-dark-border text-white rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all" placeholder="0.0000">
+            </div>
+            <p id="sellValuePreview" class="text-[10px] text-red-400 font-bold mt-1 ml-1 uppercase tracking-widest">Est. Value: ₹0</p>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Payout Method</label>
+            <div class="space-y-3">
+              <label class="flex items-center p-3 bg-dark border border-dark-border rounded-xl cursor-pointer hover:border-red-500 transition-all">
+                <input type="radio" name="payoutMethod" value="upi" class="mr-3" onchange="togglePayoutFields()">
+                <div class="flex-1">
+                  <div class="font-medium text-white">UPI</div>
+                  <div class="text-xs text-gray-400">Instant transfer to UPI ID</div>
+                </div>
+              </label>
+              <label class="flex items-center p-3 bg-dark border border-dark-border rounded-xl cursor-pointer hover:border-red-500 transition-all">
+                <input type="radio" name="payoutMethod" value="bank" class="mr-3" onchange="togglePayoutFields()">
+                <div class="flex-1">
+                  <div class="font-medium text-white">Bank Transfer</div>
+                  <div class="text-xs text-gray-400">Transfer to bank account</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div id="upiFields" class="hidden">
+            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">UPI ID</label>
+            <div class="relative">
+              <i data-lucide="smartphone" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+              <input type="text" id="upiId" class="w-full pl-10 pr-4 py-3 text-sm bg-dark border border-dark-border text-white rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all" placeholder="yourname@upi">
+            </div>
+          </div>
+          <div id="bankFields" class="hidden space-y-3">
+            <div>
+              <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Bank Account Number</label>
+              <div class="relative">
+                <i data-lucide="building" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                <input type="text" id="bankAccount" class="w-full pl-10 pr-4 py-3 text-sm bg-dark border border-dark-border text-white rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all" placeholder="Account number">
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">IFSC Code</label>
+              <div class="relative">
+                <i data-lucide="credit-card" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+                <input type="text" id="ifscCode" class="w-full pl-10 pr-4 py-3 text-sm bg-dark border border-dark-border text-white rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all" placeholder="IFSC code">
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Recipient Name</label>
+            <div class="relative">
+              <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+              <input type="text" id="recipientName" required class="w-full pl-10 pr-4 py-3 text-sm bg-dark border border-dark-border text-white rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all" placeholder="Recipient full name">
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Email (for confirmation)</label>
+            <div class="relative">
+              <i data-lucide="mail" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
+              <input type="email" id="recipientEmail" required class="w-full pl-10 pr-4 py-3 text-sm bg-dark border border-dark-border text-white rounded-xl focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none transition-all" placeholder="recipient@example.com">
+            </div>
+          </div>
+          <div class="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <i data-lucide="info" class="w-4 h-4 text-red-400"></i>
+              <p class="text-sm font-bold text-red-400">Sell Information</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <p class="text-gray-500">Current Price</p>
+                <p id="currentSellPrice" class="text-white font-bold">₹0/gram</p>
+              </div>
+              <div>
+                <p class="text-gray-500">USDC Estimate</p>
+                <p id="usdcEstimate" class="text-white font-bold">0 USDC</p>
+              </div>
+            </div>
+          </div>
+          <div class="pt-4 mt-2 border-t border-dark-border">
+            <button type="submit" id="confirmSellBtn" class="w-full bg-red-500 text-white font-bold py-3.5 px-6 rounded-xl hover:bg-red-400 hover:scale-[1.02] shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all flex items-center justify-center gap-2 group">
+              Sell Gold <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- Navbar -->
   <nav class="fixed top-0 w-full z-50 glass-nav transition-all duration-300" id="mainNav">
@@ -112,7 +213,9 @@
         </div>
         <div class="hidden md:flex items-center gap-2"><a href="create.html"
             class="px-5 py-2 rounded-xl text-sm font-bold text-gray-300 hover:text-gold hover:bg-gold/10 transition-all flex items-center gap-2"><i
-              data-lucide="plus-circle" class="w-4 h-4"></i>Create </a><a href="profile.html"
+              data-lucide="plus-circle" class="w-4 h-4"></i>Create </a><a href="transactions.html"
+            class="px-5 py-2 rounded-xl text-sm font-bold text-gray-300 hover:text-gold hover:bg-gold/10 transition-all flex items-center gap-2"><i
+              data-lucide="history" class="w-4 h-4"></i>History </a><a href="profile.html"
             class="px-5 py-2 rounded-xl text-sm font-bold text-gray-300 hover:text-gold hover:bg-gold/10 transition-all flex items-center gap-2"><i
               data-lucide="user-circle" class="w-4 h-4"></i>Profile </a></div>
         <div class="flex items-center"><button onclick="logout()"
@@ -128,6 +231,9 @@
     <a href="create.html"
       class="flex-1 flex flex-col items-center justify-center p-2 text-gray-400 hover:text-gold transition-colors"><i
         data-lucide="plus-circle" class="w-5 h-5 mb-1"></i><span class="text-[10px] font-bold">Create</span></a><a
+      href="transactions.html"
+      class="flex-1 flex flex-col items-center justify-center p-2 text-gray-400 hover:text-gold transition-colors"><i
+        data-lucide="history" class="w-5 h-5 mb-1"></i><span class="text-[10px] font-bold">History</span></a><a
       href="profile.html"
       class="flex-1 flex flex-col items-center justify-center p-2 text-gray-400 hover:text-gold transition-colors"><i
         data-lucide="user-circle" class="w-5 h-5 mb-1"></i><span class="text-[10px] font-bold">Profile</span></a>
@@ -194,7 +300,17 @@
           <p class="text-[11px] text-gray-400 font-medium tracking-wide">Create and share a gold link.</p>
         </div><i data-lucide="arrow-right"
           class="w-4 h-4 text-gray-600 ml-auto group-hover:text-gold group-hover:translate-x-1 transition-all"></i>
-      </a><a href="profile.html"
+      </a><div class="flex items-center gap-4 bg-dark-card border border-dark-border rounded-xl p-5 hover:border-red-500 hover:bg-red-500/5 transition-all duration-300 group shadow-md cursor-pointer" onclick="openSellModal()">
+        <div
+          class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(239,68,68,0.1)] group-hover:scale-110 transition-transform">
+          <i data-lucide="trending-down" class="w-4 h-4 text-red-400"></i>
+        </div>
+        <div>
+          <h4 class="text-base font-bold text-red-400 mb-0.5">Sell Gold</h4>
+          <p class="text-[11px] text-gray-400 font-medium tracking-wide">Convert gold to USDC.</p>
+        </div><i data-lucide="arrow-right"
+          class="w-4 h-4 text-gray-600 ml-auto group-hover:text-red-400 group-hover:translate-x-1 transition-all"></i>
+      </div><a href="profile.html"
         class="flex items-center gap-4 bg-dark-card border border-dark-border rounded-xl p-5 hover:border-gold hover:bg-gold/5 transition-all duration-300 group shadow-md">
         <div
           class="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.1)] group-hover:scale-110 transition-transform">
@@ -425,6 +541,13 @@
       window.location.href = 'login.html';
     }
 
+    function logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        localStorage.removeItem('glink_user');
+        window.location.href = 'login.html';
+      }
+    }
+
     if (testMode) {
       document.getElementById('testModeBanner').style.display = 'block';
     }
@@ -439,7 +562,7 @@
       try {
         // Use local server if running on localhost, otherwise use current origin
         const baseURL = window.location.hostname === 'localhost' ? 
-          'http://localhost:3001' : window.location.origin;
+          'http://localhost:3000' : window.location.origin;
         
         const res = await fetch(baseURL + '/api/dashboard?email=' + encodeURIComponent(user.email));
         const data = await res.json();
@@ -478,70 +601,69 @@
       document.getElementById('withdrawValuePreview').textContent = 'Est. Value: ₹0';
     }
 
-    document.getElementById('withdrawGrams')?.addEventListener('input', (e) => {
-      const grams = parseFloat(e.target.value) || 0;
-      const value = Math.round(grams * currentGoldPrice);
-      document.getElementById('withdrawValuePreview').textContent = `Est. Value: ₹${value.toLocaleString()}`;
-    });
+    function closeSellModal() {
+      document.getElementById('sellModal').classList.add('hidden');
+      document.getElementById('sellForm').reset();
+      document.getElementById('sellValuePreview').textContent = 'Est. Value: ₹0';
+      document.getElementById('usdcEstimate').textContent = '0 USDC';
+      // Hide payout fields when modal closes
+      document.getElementById('upiFields').classList.add('hidden');
+      document.getElementById('bankFields').classList.add('hidden');
+    }
 
-    document.getElementById('withdrawForm')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const grams = parseFloat(document.getElementById('withdrawGrams').value);
+    function togglePayoutFields() {
+      const selectedMethod = document.querySelector('input[name="payoutMethod"]:checked').value;
+      const upiFields = document.getElementById('upiFields');
+      const bankFields = document.getElementById('bankFields');
       
-      if (grams > currentGoldBalance) {
-        alert('Insufficient gold balance in vault.');
-        return;
+      // Hide all fields first
+      upiFields.classList.add('hidden');
+      bankFields.classList.add('hidden');
+      
+      // Show selected method fields
+      if (selectedMethod === 'upi') {
+        upiFields.classList.remove('hidden');
+      } else if (selectedMethod === 'bank') {
+        bankFields.classList.remove('hidden');
       }
+      
+      // Update form validation
+      updateSellButtonState();
+    }
 
-      const btn = document.getElementById('confirmWithdrawBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
-      lucide.createIcons();
-
-      try {
-        // Use local server if running on localhost, otherwise use current origin
-        const baseURL = window.location.hostname === 'localhost' ? 
-          'http://localhost:3001' : window.location.origin;
-        
-        const response = await fetch(baseURL + '/api/withdraw', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: user.email,
-            amount_inr: Math.round(grams * currentGoldPrice),
-            bank_account: document.getElementById('accNumber').value,
-            ifsc: document.getElementById('accIfsc').value,
-            account_name: document.getElementById('accName').value,
-            phone: document.getElementById('accPhone').value
-          })
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          alert(`Success! ${data.message}`);
-          closeWithdrawModal();
-          loadDashboard();
-        } else {
-          alert('Withdrawal Failed: ' + (data.error || 'Unknown error'));
-        }
-      } catch (err) {
-        console.error('Withdraw error:', err);
-        alert('Connection error. Please try again.');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Confirm Withdrawal <i data-lucide="arrow-right" class="w-4 h-4"></i>';
-        lucide.createIcons();
+    function updateSellButtonState() {
+      const sellGrams = document.getElementById('sellGrams').value;
+      const recipientName = document.getElementById('recipientName').value;
+      const recipientEmail = document.getElementById('recipientEmail').value;
+      const selectedMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value;
+      
+      let isValid = false;
+      
+      if (selectedMethod === 'upi') {
+        const upiId = document.getElementById('upiId').value;
+        isValid = sellGrams && recipientName && recipientEmail && upiId;
+      } else if (selectedMethod === 'bank') {
+        const bankAccount = document.getElementById('bankAccount').value;
+        const ifscCode = document.getElementById('ifscCode').value;
+        isValid = sellGrams && recipientName && recipientEmail && bankAccount && ifscCode;
       }
-    });
-
-    function logout() {
-      if (confirm('Are you sure you want to logout?')) {
-        localStorage.removeItem('glink_user');
-        window.location.href = 'login.html';
+      
+      const sellBtn = document.getElementById('confirmSellBtn');
+      if (isValid) {
+        sellBtn.disabled = false;
+        sellBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        sellBtn.disabled = true;
+        sellBtn.classList.add('opacity-50', 'cursor-not-allowed');
       }
     }
 
-    loadDashboard();
+    function openSellModal() {
+      document.getElementById('sellModal').classList.remove('hidden');
+      document.getElementById('sellGrams').max = currentGoldBalance;
+      document.getElementById('currentSellPrice').textContent = `₹${Math.round(currentGoldPrice).toLocaleString()}/gram`;
+      lucide.createIcons();
+    }
 
     function openBlessingModal() {
       document.getElementById('blessingModal').classList.remove('hidden');
@@ -552,16 +674,15 @@
       lucide.createIcons();
     }
 
-    function closeBlessingModal() {
-      document.getElementById('blessingModal').classList.add('hidden');
-      document.getElementById('blessingForm').reset();
-    }
-
     async function loadBlessingPages() {
       try {
-        const response = await fetch(`/api/blessing/my?email=${encodeURIComponent(user.email)}`);
+        const baseURL = window.location.hostname === 'localhost' ? 
+          'http://localhost:3000' : window.location.origin;
+        const response = await fetch(`${baseURL}/api/blessing/my?email=${encodeURIComponent(user.email)}`);
         const data = await response.json();
+        console.log('Blessing API Response:', data);
         if (data.success) {
+          console.log('Blessings received:', data.blessings);
           renderBlessingPages(data.blessings);
         }
       } catch (error) {
@@ -573,16 +694,28 @@
       const grid = document.getElementById('blessingPagesGrid');
       const noBlessings = document.getElementById('noBlessings');
 
+      console.log('renderBlessingPages called with:', blessings.length, 'blessings');
+      console.log('Grid element:', grid);
+      console.log('NoBlessings element:', noBlessings);
+
       if (blessings.length === 0) {
+        console.log('No blessings found - showing no blessings message');
         grid.style.display = 'none';
         noBlessings.style.display = 'block';
         return;
       }
 
+      console.log('Blessings found - showing grid');
       grid.style.display = 'grid'; // Ensure grid is displayed
       noBlessings.style.display = 'none';
 
-      grid.innerHTML = blessings.map(page => `
+      grid.innerHTML = blessings.map((page, index) => {
+        const safeName = (page.name || '').replace(/'/g, '&apos;');
+        const safeOccasion = (page.occasion || '').replace(/'/g, '&apos;');
+        
+        console.log('Rendering blessing page:', page.id, page.name, 'Gold:', page.total_gold);
+        
+        return `
           <div class="bg-dark border border-dark-border rounded-xl p-5 hover:border-gold/50 transition-colors duration-300 group shadow-md relative overflow-hidden">
             <div class="absolute top-0 right-0 w-24 h-24 bg-gold/5 blur-2xl rounded-full pointer-events-none"></div>
             
@@ -595,7 +728,7 @@
                 <button onclick="viewBlessing('${page.id}')" class="w-8 h-8 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-gray-400 hover:text-gold hover:border-gold/50 transition-colors shrink-0" title="View Page">
                   <i data-lucide="eye" class="w-4 h-4"></i>
                 </button>
-                <button onclick="shareBlessing('${page.id}', '${page.name.replace(/'/g, "\\'")}', '${page.occasion.replace(/'/g, "\\'")}')" class="w-8 h-8 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:border-[#25D366]/50 transition-colors shrink-0" title="Share via WhatsApp">
+                <button onclick="shareBlessing('${page.id}', '${safeName}', '${safeOccasion}')" class="w-8 h-8 rounded-full bg-dark-card border border-dark-border flex items-center justify-center text-gray-400 hover:text-[#25D366] hover:border-[#25D366]/50 transition-colors shrink-0" title="Share via WhatsApp">
                   <i data-lucide="share-2" class="w-4 h-4"></i>
                 </button>
               </div>
@@ -616,7 +749,8 @@
               </div>
             </div>
           </div>
-        `).join('');
+        `;
+      }).join('');
 
       lucide.createIcons();
     }
@@ -645,19 +779,17 @@
         const userName = user?.name || document.getElementById('blesserName').value;
         const userEmail = user?.email || document.getElementById('blesserEmail').value;
 
-        const response = await fetch('/api/blessing/create', {
-
+        const response = await fetch(`${baseURL}/api/blessing/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          }
-
-          ,
+          },
           body: JSON.stringify({
             name: userName,
             occasion: document.getElementById('blessingOccasion').value,
             message: document.getElementById('blessingMessage').value,
-            email: userEmail
+            email: userEmail,
+            phone: document.getElementById('blesserPhone').value
           })
         });
 
@@ -703,13 +835,161 @@
       window.open(whatsappUrl, '_blank');
     }
 
+    loadDashboard();
+
+    // Sell Gold Event Listeners
+    document.getElementById('sellGrams')?.addEventListener('input', (e) => {
+      const grams = parseFloat(e.target.value) || 0;
+      const inrValue = Math.round(grams * currentGoldPrice);
+      const usdcValue = (grams * currentGoldPrice / 84).toFixed(2);
+      document.getElementById('sellValuePreview').textContent = `Est. Value: ₹${inrValue.toLocaleString()}`;
+      document.getElementById('usdcEstimate').textContent = `${usdcValue} USDC`;
+      updateSellButtonState();
+    });
+
+    // Add event listeners for payout fields
+    document.getElementById('upiId')?.addEventListener('input', updateSellButtonState);
+    document.getElementById('bankAccount')?.addEventListener('input', updateSellButtonState);
+    document.getElementById('ifscCode')?.addEventListener('input', updateSellButtonState);
+    document.getElementById('recipientName')?.addEventListener('input', updateSellButtonState);
+    document.getElementById('recipientEmail')?.addEventListener('input', updateSellButtonState);
+
+    document.getElementById('sellForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const grams = parseFloat(document.getElementById('sellGrams').value);
+      
+      if (grams > currentGoldBalance) {
+        alert('Insufficient gold balance in vault.');
+        return;
+      }
+
+      const btn = document.getElementById('confirmSellBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Selling...';
+      lucide.createIcons();
+
+      try {
+        const baseURL = window.location.hostname === 'localhost' ? 
+          'http://localhost:3000' : window.location.origin;
+        
+        const selectedMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value;
+        const payoutData = {};
+        
+        if (selectedMethod === 'upi') {
+          payoutData.upi_id = document.getElementById('upiId').value;
+        } else if (selectedMethod === 'bank') {
+          payoutData.bank_account = document.getElementById('bankAccount').value;
+          payoutData.ifsc_code = document.getElementById('ifscCode').value;
+        }
+        
+        const response = await fetch(baseURL + '/api/sell-gold', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            gold_grams: grams,
+            payout_method: selectedMethod,
+            recipient_name: document.getElementById('recipientName').value,
+            recipient_email: document.getElementById('recipientEmail').value,
+            ...payoutData
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          alert(`Gold sold successfully! Sold: ${data.goldSold}g for ₹${(data.inrAmount || 0).toLocaleString()}`);
+          closeSellModal();
+          loadDashboard();
+        } else {
+          alert('Sell Failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Sell error:', err);
+        alert('Connection error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sell Gold <i data-lucide="arrow-right" class="w-4 h-4"></i>';
+        lucide.createIcons();
+      }
+    });
+
+    // Withdrawal Event Listeners
+    document.getElementById('withdrawGrams')?.addEventListener('input', (e) => {
+      const grams = parseFloat(e.target.value) || 0;
+      const value = Math.round(grams * currentGoldPrice);
+      document.getElementById('withdrawValuePreview').textContent = `Est. Value: ₹${value.toLocaleString()}`;
+    });
+
+    document.getElementById('withdrawForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const grams = parseFloat(document.getElementById('withdrawGrams').value);
+      
+      console.log('=== WITHDRAWAL SUBMISSION STARTED ===');
+      console.log('Grams to withdraw:', grams);
+      console.log('Current gold balance:', currentGoldBalance);
+      
+      if (grams > currentGoldBalance) {
+        alert('Insufficient gold balance in vault.');
+        return;
+      }
+
+      const btn = document.getElementById('confirmWithdrawBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
+      lucide.createIcons();
+
+      try {
+        const baseURL = window.location.hostname === 'localhost' ? 
+          'http://localhost:3000' : window.location.origin;
+        
+        const withdrawData = {
+          email: user.email,
+          amount_inr: Math.round(grams * currentGoldPrice),
+          bank_account: document.getElementById('accNumber').value,
+          ifsc: document.getElementById('accIfsc').value,
+          account_name: document.getElementById('accName').value,
+          phone: document.getElementById('accPhone').value
+        };
+        
+        console.log('Withdrawal data to send:', withdrawData);
+        console.log('Sending to:', baseURL + '/api/withdraw');
+        
+        const response = await fetch(baseURL + '/api/withdraw', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(withdrawData)
+        });
+
+        console.log('Withdrawal response status:', response.status);
+        const data = await response.json();
+        console.log('Withdrawal response data:', data);
+        if (data.success) {
+          alert(`Success! ${data.message}`);
+          closeWithdrawModal();
+          loadDashboard();
+        } else {
+          alert('Withdrawal Failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Withdraw error:', err);
+        alert('Connection error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Confirm Withdrawal <i data-lucide="arrow-right" class="w-4 h-4"></i>';
+        lucide.createIcons();
+      }
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
       loadBlessingPages();
     });
 
     async function openRazorpay(amount) {
       try {
-        const res = await fetch('/api/payment/create-order', {
+        const baseURL = window.location.hostname === 'localhost' ? 
+          'http://localhost:3000' : window.location.origin;
+        
+        const res = await fetch(`${baseURL}/api/payment/create-order`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount })
@@ -731,7 +1011,7 @@
           handler: async function (response) {
             alert('Payment successful: ' + response.razorpay_payment_id);
             try {
-              const res = await fetch('/api/payment/verify', {
+              const res = await fetch(`${baseURL}/api/payment/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(response)
@@ -759,6 +1039,20 @@
       }
     }
 
+    async function loadBlessingPages() {
+      try {
+        // Use local server if running on localhost, otherwise use current origin
+        const baseURL = window.location.hostname === 'localhost' ? 
+          'http://localhost:3000' : window.location.origin;
+        
+        const response = await fetch(`${baseURL}/api/blessing/my?email=${encodeURIComponent(user.email)}`);
+        const data = await response.json();
+        renderBlessingPages(data.blessings);
+      } catch (e) {
+        console.error(e);
+        alert('Error: ' + e.message);
+      }
+    }
   </script>
 </body>
 
